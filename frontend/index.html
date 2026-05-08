@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJ Set Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void:    #080b10;
+      --bg-surface: #0d1117;
+      --bg-card:    #121820;
+      --bg-hover:   #1a2332;
+      --accent:     #00e5ff;
+      --accent2:    #ff3d7f;
+      --accent3:    #a855f7;
+      --text-primary: #e8edf5;
+      --text-dim:     #5a7a9a;
+      --text-muted:   #3a5068;
+      --border:     rgba(0,229,255,0.12);
+      --glow:       0 0 30px rgba(0,229,255,0.15);
+      --glow-hot:   0 0 30px rgba(255,61,127,0.25);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 0 20px rgba(0,229,255,0.3);
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+    }
+
+    .logo-text p {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-family: 'Space Mono', monospace;
+      margin-top: 4px;
+    }
+
+    .status-dot {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Input Panel ── */
+    .input-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 28px;
+      box-shadow: var(--glow);
+    }
+
+    .input-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+      margin-bottom: 12px;
+    }
+
+    .url-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .url-input {
+      flex: 1;
+      background: var(--bg-void);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: var(--text-primary);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .url-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(0,229,255,0.1);
+    }
+
+    .url-input::placeholder { color: var(--text-muted); }
+
+    .analyze-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      border: none;
+      border-radius: 10px;
+      padding: 14px 28px;
+      color: var(--bg-void);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .analyze-btn:hover    { transform: translateY(-1px); box-shadow: 0 0 25px rgba(0,229,255,0.4); }
+    .analyze-btn:active   { transform: translateY(0); }
+    .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── URL Preview ── */
+    #urlPreview { display: none; }
+    #urlPreview.visible { display: block; }
+
+    .preview-loading {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .preview-thumb {
+      width: 120px;
+      height: 68px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg-hover);
+    }
+
+    .preview-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .preview-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ── Progress Panel ── */
+    .progress-panel {
+      background: var(--bg-surface);
+      border: 1px solid rgba(255,61,127,0.2);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      display: none;
+      box-shadow: var(--glow-hot);
+    }
+
+    .progress-panel.visible { display: block; }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .progress-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent2);
+    }
+
+    .progress-counter {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .progress-bar-track {
+      height: 4px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent3));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 10px rgba(255,61,127,0.5);
+      width: 0%;
+    }
+
+    .progress-status {
+      font-size: 14px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,61,127,0.2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: var(--bg-surface);
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 10px 20px;
+      color: var(--text-dim);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 9px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-hover);
+      color: var(--accent);
+      box-shadow: inset 0 0 15px rgba(0,229,255,0.05);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Track List ── */
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .track-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      animation: slide-in 0.3s ease;
+      transition: border-color 0.2s;
+    }
+
+    .track-item:hover {
+      border-color: rgba(0,229,255,0.25);
+      background: var(--bg-hover);
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .track-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 24px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .track-cover {
+      width: 44px; height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg-hover);
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .track-cover.placeholder {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    .track-info { flex: 1; min-width: 0; }
+
+    .track-title {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-time {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(0,229,255,0.07);
+      padding: 4px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,229,255,0.15);
+    }
+
+    .track-genre {
+      font-size: 11px;
+      color: var(--accent3);
+      background: rgba(168,85,247,0.08);
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(168,85,247,0.2);
+      flex-shrink: 0;
+    }
+
+    /* ── Library ── */
+    .library-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .set-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .set-card:hover { border-color: rgba(0,229,255,0.2); }
+
+    .set-header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .set-platform {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .set-platform.youtube    { background: rgba(255,0,0,0.12); }
+    .set-platform.soundcloud { background: rgba(255,90,0,0.12); }
+
+    .set-meta { flex: 1; min-width: 0; }
+
+    .set-title {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .set-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+      margin-top: 3px;
+    }
+
+    .set-badges {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      font-size: 12px;
+      font-family: 'Space Mono', monospace;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .badge-tracks {
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      color: var(--accent);
+    }
+
+    .badge-delete {
+      background: rgba(255,61,127,0.06);
+      border: 1px solid rgba(255,61,127,0.15);
+      color: var(--accent2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .badge-delete:hover { background: rgba(255,61,127,0.15); }
+
+    .set-expand-icon {
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .set-tracks-container {
+      display: none;
+      padding: 0 20px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .set-tracks-container.open {
+      display: block;
+      padding-top: 16px;
+    }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3    { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text-dim); }
+    .empty-state p     { font-size: 14px; }
+
+    ::-webkit-scrollbar       { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo-icon">🎧</div>
+    <div class="logo-text">
+      <h1>DJ Set Analyzer</h1>
+      <p>Shazam · YouTube · SoundCloud</p>
+    </div>
+    <div class="status-dot" id="serverStatus">
+      <div class="dot"></div>
+      <span>ONLINE</span>
+    </div>
+  </header>
+
+  <div class="input-panel">
+    <div class="input-label">▸ URL do Set</div>
+    <div class="url-row">
+      <input
+        type="text"
+        class="url-input"
+        id="urlInput"
+        placeholder="https://www.youtube.com/watch?v=... ou https://soundcloud.com/..."
+        spellcheck="false"
+      >
+      <button class="analyze-btn" id="analyzeBtn" onclick="startAnalysis()">
+        Analisar
+      </button>
+    </div>
+
+    <!-- Preview de thumbnail + título + duração -->
+    <div id="urlPreview"></div>
+  </div>
+
+  <div class="progress-panel" id="progressPanel">
+    <div class="progress-header">
+      <div class="progress-title">⚡ Analisando Set</div>
+      <div class="progress-counter" id="progressCounter"></div>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="progress-status">
+      <div class="spinner"></div>
+      <span id="progressStatus">Iniciando...</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('current')">Análise Atual</button>
+    <button class="tab-btn"        onclick="switchTab('library')">Biblioteca de Sets</button>
+  </div>
+
+  <div class="tab-content active" id="tab-current">
+    <div class="track-list" id="trackList">
+      <div class="empty-state">
+        <div class="icon">🎵</div>
+        <h3>Nenhuma análise em andamento</h3>
+        <p>Cole uma URL acima e clique em Analisar para começar</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-library">
+    <div class="library-grid" id="libraryGrid">
+      <div class="empty-state">
+        <div class="icon">📚</div>
+        <h3>Biblioteca vazia</h3>
+        <p>Os sets analisados aparecerão aqui</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:5055/api';
+let currentEventSource = null;
+let previewTimer       = null;
+
+// ── Verifica saúde do servidor ───────────────────────────────────────────
+async function checkServer() {
+  try {
+    const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) throw new Error();
+    document.getElementById('serverStatus').innerHTML =
+      '<div class="dot"></div><span>ONLINE</span>';
+  } catch {
+    document.getElementById('serverStatus').innerHTML =
+      '<div class="dot" style="background:#ef4444;box-shadow:0 0 8px #ef4444"></div>' +
+      '<span style="color:#ef4444">OFFLINE — rode start.bat</span>';
+  }
+}
+checkServer();
+setInterval(checkServer, 10000);
+
+// ── Preview automático de URL ────────────────────────────────────────────
+// Espera 800ms após o usuário parar de digitar antes de buscar
+// Isso evita uma requisição a cada tecla pressionada (debounce)
+document.getElementById('urlInput').addEventListener('input', () => {
+  clearTimeout(previewTimer);
+  const url     = document.getElementById('urlInput').value.trim();
+  const preview = document.getElementById('urlPreview');
+
+  const isValid = url && (
+    url.includes('youtube.com') ||
+    url.includes('youtu.be')    ||
+    url.includes('soundcloud.com')
+  );
+
+  if (!isValid) {
+    preview.className = '';
+    preview.innerHTML = '';
+    return;
+  }
+
+  preview.className = 'visible';
+  preview.innerHTML = '<div class="preview-loading">🔍 Buscando informações...</div>';
+  previewTimer = setTimeout(() => fetchPreview(url), 800);
+});
+
+async function fetchPreview(url) {
+  const preview = document.getElementById('urlPreview');
+  try {
+    const res  = await fetch(`${API}/info`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url })
+    });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      preview.className = '';
+      preview.innerHTML = '';
+      return;
+    }
+
+    const icon = data.platform === 'YouTube' ? '▶️' : '☁️';
+    const dur  = formatTime(data.duration);
+
+    preview.innerHTML = `
+      <div style="height:1px;background:var(--border);margin:20px 0 16px;"></div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <img src="${esc(data.thumbnail)}" alt="" class="preview-thumb"
+             onerror="this.style.display='none'">
+        <div style="flex:1;min-width:0;">
+          <div class="preview-title">${esc(data.title)}</div>
+          <div class="preview-meta">${icon} ${esc(data.platform)} · ⏱ ${dur}</div>
+        </div>
+      </div>
+    `;
+    preview.className = 'visible';
+  } catch {
+    preview.className = '';
+    preview.innerHTML = '';
+  }
+}
+
+// ── Troca de abas ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active',
+      (i === 0 && tab === 'current') || (i === 1 && tab === 'library')
+    );
+  });
+  document.getElementById('tab-current').classList.toggle('active', tab === 'current');
+  document.getElementById('tab-library').classList.toggle('active', tab === 'library');
+  if (tab === 'library') loadLibrary();
+}
+
+// ── Iniciar análise ──────────────────────────────────────────────────────
+async function startAnalysis() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return alert('Cole uma URL válida');
+
+  document.getElementById('trackList').innerHTML = '';
+  document.getElementById('progressPanel').classList.add('visible');
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressStatus').textContent = 'Conectando ao servidor...';
+  document.getElementById('progressCounter').textContent = '';
+
+  if (currentEventSource) currentEventSource.close();
+
+  let data;
+  try {
+    const res = await fetch(`${API}/analyze`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url })
+    });
+    data = await res.json();
+    if (!res.ok) { alert(data.error || 'Erro desconhecido'); reset(); return; }
+  } catch {
+    alert('Não foi possível conectar ao servidor.\nVerifique se o start.bat está rodando.');
+    reset();
+    return;
+  }
+
+  // Abre stream SSE — servidor empurra eventos conforme analisa
+  currentEventSource = new EventSource(`${API}/progress/${data.job_id}`);
+
+  currentEventSource.addEventListener('status', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('progressStatus').textContent = d.message;
+    if (d.total_segments) {
+      document.getElementById('progressCounter').textContent =
+        `0 / ${d.total_segments} segmentos`;
+    }
+  });
+
+  currentEventSource.addEventListener('progress', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('progressBar').style.width = d.percent + '%';
+    document.getElementById('progressCounter').textContent =
+      `${d.current} / ${d.total} segmentos · ${formatTime(d.timestamp)}`;
+    document.getElementById('progressStatus').textContent =
+      `🔍 Analisando segmento ${d.current} de ${d.total}...`;
+  });
+
+  currentEventSource.addEventListener('track', e => {
+    appendTrack(JSON.parse(e.data));
+  });
+
+  currentEventSource.addEventListener('done', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('progressStatus').textContent = d.message;
+    document.getElementById('progressBar').style.width = '100%';
+    reset();
+    setTimeout(() => {
+      document.getElementById('progressPanel').classList.remove('visible');
+    }, 3000);
+  });
+
+  currentEventSource.addEventListener('error', e => {
+    try {
+      document.getElementById('progressStatus').textContent =
+        '❌ ' + JSON.parse(e.data).message;
+    } catch {}
+    reset();
+  });
+
+  switchTab('current');
+}
+
+function reset() {
+  document.getElementById('analyzeBtn').disabled = false;
+  if (currentEventSource) { currentEventSource.close(); currentEventSource = null; }
+}
+
+// ── Adiciona faixa à lista em tempo real ─────────────────────────────────
+function appendTrack(track) {
+  const list = document.getElementById('trackList');
+  const num  = list.querySelectorAll('.track-item').length + 1;
+
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = 'track-item';
+  item.innerHTML = `
+    <span class="track-num">${String(num).padStart(2,'0')}</span>
+    ${track.cover_url
+      ? `<img class="track-cover" src="${track.cover_url}" alt=""
+             onerror="this.outerHTML='<div class=\\'track-cover placeholder\\'>🎵</div>'">`
+      : `<div class="track-cover placeholder">🎵</div>`
+    }
+    <div class="track-info">
+      <div class="track-title">${esc(track.title)}</div>
+      <div class="track-artist">${esc(track.artist)}</div>
+    </div>
+    ${track.genre ? `<span class="track-genre">${esc(track.genre)}</span>` : ''}
+    <span class="track-time">${track.timestamp}</span>
+  `;
+  list.appendChild(item);
+  item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Carrega biblioteca ───────────────────────────────────────────────────
+async function loadLibrary() {
+  const grid = document.getElementById('libraryGrid');
+  grid.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><h3>Carregando...</h3></div>';
+
+  let sets;
+  try {
+    sets = await fetch(`${API}/library`).then(r => r.json());
+  } catch {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">❌</div><h3>Erro ao carregar</h3><p>Servidor offline?</p></div>';
+    return;
+  }
+
+  if (!sets.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">📚</div><h3>Biblioteca vazia</h3><p>Os sets analisados aparecerão aqui</p></div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  sets.forEach(set => grid.appendChild(buildSetCard(set)));
+}
+
+function buildSetCard(set) {
+  const card = document.createElement('div');
+  card.className = 'set-card';
+  card.dataset.setId = set.id;
+
+  const icon = set.platform === 'YouTube' ? '▶️' : '☁️';
+  const cls  = set.platform === 'YouTube' ? 'youtube' : 'soundcloud';
+  const date = new Date(set.analyzed_at).toLocaleDateString('pt-BR',
+    { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const header = document.createElement('div');
+  header.className = 'set-header';
+  header.innerHTML = `
+    <div class="set-platform ${cls}">${icon}</div>
+    <div class="set-meta">
+      <div class="set-title">${esc(set.title || 'Set sem título')}</div>
+      <div class="set-subtitle">${date} · ${set.platform}</div>
+    </div>
+    <div class="set-badges">
+      <span class="badge badge-tracks">${set.track_count} faixas</span>
+      <span class="badge badge-delete" onclick="deleteSet(${set.id},event)">🗑</span>
+    </div>
+    <span class="set-expand-icon" id="exp-${set.id}">▼</span>
+  `;
+
+  const tracksDiv = document.createElement('div');
+  tracksDiv.className = 'set-tracks-container';
+  tracksDiv.id = `tracks-${set.id}`;
+
+  if (set.tracks && set.tracks.length) {
+    tracksDiv.innerHTML = `<div class="track-list">${
+      set.tracks.map((t, i) => `
+        <div class="track-item">
+          <span class="track-num">${String(i+1).padStart(2,'0')}</span>
+          ${t.cover_url
+            ? `<img class="track-cover" src="${t.cover_url}" alt=""
+                   onerror="this.outerHTML='<div class=\\'track-cover placeholder\\'>🎵</div>'">`
+            : `<div class="track-cover placeholder">🎵</div>`
+          }
+          <div class="track-info">
+            <div class="track-title">${esc(t.title||'?')}</div>
+            <div class="track-artist">${esc(t.artist||'?')}</div>
+          </div>
+          ${t.genre ? `<span class="track-genre">${esc(t.genre)}</span>` : ''}
+          <span class="track-time">${formatTime(t.timestamp_s)}</span>
+        </div>
+      `).join('')
+    }</div>`;
+  } else {
+    tracksDiv.innerHTML =
+      '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Nenhuma faixa identificada</p>';
+  }
+
+  header.addEventListener('click', () => {
+    const open = tracksDiv.classList.toggle('open');
+    document.getElementById(`exp-${set.id}`).style.transform =
+      open ? 'rotate(180deg)' : '';
+  });
+
+  card.appendChild(header);
+  card.appendChild(tracksDiv);
+  return card;
+}
+
+// ── Deletar set ──────────────────────────────────────────────────────────
+async function deleteSet(id, e) {
+  e.stopPropagation();
+  if (!confirm('Remover este set da biblioteca?')) return;
+  await fetch(`${API}/set/${id}`, { method: 'DELETE' });
+  document.querySelector(`.set-card[data-set-id="${id}"]`)?.remove();
+}
+
+// ── Utilitários ──────────────────────────────────────────────────────────
+function formatTime(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  return h > 0
+    ? `${pad(h)}:${pad(m)}:${pad(sec)}`
+    : `${pad(m)}:${pad(sec)}`;
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function esc(str) {
+  return String(str||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startAnalysis();
+});
+</script>
+</body>
+</html>
