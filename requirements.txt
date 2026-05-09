@@ -1,0 +1,9 @@
+# requirements.txt
+
+flask
+flask-cors
+requests
+yt-dlp
+soundcloud-v2
+shazamio
+python-dotenv
